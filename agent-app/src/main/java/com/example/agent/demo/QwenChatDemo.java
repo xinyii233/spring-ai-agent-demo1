@@ -1,10 +1,13 @@
 package com.example.agent.demo;
 
+import org.springframework.context.annotation.Profile;
+
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
 @Component
+@Profile("chat-demo")
 public class QwenChatDemo implements CommandLineRunner {
 
     private final ChatClient chatClient;
