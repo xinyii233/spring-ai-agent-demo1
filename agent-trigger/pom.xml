@@ -8,10 +8,32 @@
     </parent>
     <artifactId>agent-trigger</artifactId>
     <dependencies>
-        <dependency><groupId>com.example</groupId><artifactId>agent-api</artifactId><version>${project.version}</version></dependency>
-        <dependency><groupId>com.example</groupId><artifactId>agent-domain</artifactId><version>${project.version}</version></dependency>
-        <dependency><groupId>com.example</groupId><artifactId>agent-types</artifactId><version>${project.version}</version></dependency>
-        <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-webmvc</artifactId></dependency>
+        <dependency>
+            <groupId>com.example</groupId>
+            <artifactId>agent-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.example</groupId>
+            <artifactId>agent-domain</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.example</groupId>
+            <artifactId>agent-types</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webmvc</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-model</artifactId>
+        </dependency>
+
     </dependencies>
 
 </project>
