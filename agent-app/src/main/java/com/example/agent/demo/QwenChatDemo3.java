@@ -13,9 +13,11 @@ import java.util.Scanner;
 public class QwenChatDemo3 implements CommandLineRunner {
 
     private final ChatClient chatClient;
+    private final ActivityTools tools;
 
-    public QwenChatDemo3(ChatClient.Builder builder) {
+    public QwenChatDemo3(ChatClient.Builder builder, ActivityTools tools) {
         this.chatClient = builder.build();
+        this.tools = tools;
     }
 
     @Override
@@ -34,7 +36,7 @@ public class QwenChatDemo3 implements CommandLineRunner {
 
         String answer = chatClient.prompt()
                 .user(question)
-                .tools(new ActivityTools())
+                .tools(tools)
                 .call()
                 .content();
 

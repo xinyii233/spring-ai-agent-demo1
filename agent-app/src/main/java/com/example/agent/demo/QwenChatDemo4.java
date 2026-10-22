@@ -29,6 +29,9 @@ public class QwenChatDemo4 implements CommandLineRunner {
     // 这是客户端对象的引用，不是聊天历史列表；复用客户端不会自动获得跨轮记忆。
     private final ChatClient chatClient;
 
+    // Spring 注入已经连接好查询仓储的工具对象，Demo 不直接创建模拟数据。
+    private final ActivityTools tools;
+
     // 下面保留的是旧构造方法，整段已被注释，不参与编译，也不会执行。
     // 旧版只创建客户端，没有额外注册 SimpleLoggerAdvisor。
 //    public QwenChatDemo4(ChatClient.Builder builder) {
@@ -36,8 +39,8 @@ public class QwenChatDemo4 implements CommandLineRunner {
 //    }
 
     // 构造方法与类同名，无返回类型；Spring 创建对象时调用它。
-    // 本类只有一个有效构造方法，Spring 会自动注入已配置好的 ChatClient.Builder。
-    public QwenChatDemo4(ChatClient.Builder builder) {
+    // 本类只有一个有效构造方法，Spring 会自动注入客户端构建器和装配好的工具对象。
+    public QwenChatDemo4(ChatClient.Builder builder, ActivityTools tools) {
         // this.chatClient 指当前对象的字段；右侧使用注入的构建器配置并创建客户端。
         this.chatClient = builder
             // 给此客户端注册默认日志 Advisor；配合 properties 中的 DEBUG 设置输出日志。
@@ -45,6 +48,8 @@ public class QwenChatDemo4 implements CommandLineRunner {
             .defaultAdvisors(new SimpleLoggerAdvisor())
             // 完成构建，得到 ChatClient；分号表示这整条赋值语句结束。
             .build();
+        // 保存注入的工具引用，供 run 中每一轮请求复用。
+        this.tools = tools;
     } // 构造方法结束。
 
     // 告诉编译器：下面的方法实现了接口中声明的方法，签名不匹配时会报错。
@@ -54,8 +59,7 @@ public class QwenChatDemo4 implements CommandLineRunner {
     public void run(String... args) {
         // 创建输入读取器；System.in 是标准输入流，在 IDEA 运行窗口中输入文字并按回车。
         Scanner scanner = new Scanner(System.in);
-        // 创建本地工具对象，供每轮请求复用；此时并没有执行查询方法，也没有发送活动数据。
-        ActivityTools tools = new ActivityTools();
+        // tools 已经由构造方法注入；查询和业务数据仍只在工具真正执行时读取。
 
         // 在本地控制台打印操作说明并换行；这段文字不会发送给模型。
         System.out.println("请输入问题，输入 exit 结束本次交互。");
