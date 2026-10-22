@@ -11,9 +11,11 @@ import org.springframework.stereotype.Component;
 public class QwenChatDemo2 implements CommandLineRunner {
 
     private final ChatClient chatClient;
+    private final ActivityTools tools;
 
-    public QwenChatDemo2(ChatClient.Builder builder) {
+    public QwenChatDemo2(ChatClient.Builder builder, ActivityTools tools) {
         this.chatClient = builder.build();
+        this.tools = tools;
     }
 
     @Override
@@ -24,7 +26,7 @@ public class QwenChatDemo2 implements CommandLineRunner {
 
         String answer = chatClient.prompt()
                 .user(question)
-                .tools(new ActivityTools())
+                .tools(tools)
                 .call()
                 .content();
 

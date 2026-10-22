@@ -1,0 +1,30 @@
+{
+  "type": "object",
+  "properties": {
+    "activityId": {
+      "type": ["string", "null"],
+      "description": "活动编号；无法确定时为 null"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "SUCCESS",
+        "NEED_INPUT",
+        "NOT_FOUND",
+        "PARTIAL",
+        "QUERY_FAILED"
+      ],
+      "description": "根据工具结果和信息完整程度确定的业务状态"
+    },
+    "message": {
+      "type": "string",
+      "description": "面向用户的中文回答或补充信息提示"
+    }
+  },
+  "required": [
+    "activityId",
+    "status",
+    "message"
+  ],
+  "additionalProperties": false
+}
