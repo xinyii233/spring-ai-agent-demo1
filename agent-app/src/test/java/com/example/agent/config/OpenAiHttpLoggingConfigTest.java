@@ -4,6 +4,7 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.example.agent.trigger.tool.ActivityTools;
+import com.example.agent.infrastructure.adapter.repository.mock.MockActivityRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.Test;
@@ -69,7 +70,9 @@ class OpenAiHttpLoggingConfigTest {
                     .defaultAdvisors(ToolCallingAdvisor.builder().build())
                     .build();
 
-            String answer = client.prompt().user("A001").tools(new ActivityTools()).call().content();
+            String answer = client.prompt().user("A001")
+                    .tools(new ActivityTools(new MockActivityRepository()))
+                    .call().content();
 
             assertThat(answer).isEqualTo("A001 的销售额为9600元");
             assertThat(receivedBodies).hasSize(2);
