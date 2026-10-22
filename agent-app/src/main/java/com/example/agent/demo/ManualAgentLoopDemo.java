@@ -1,10 +1,19 @@
 package com.example.agent.demo;
 
+import org.springframework.ai.chat.prompt.SystemPromptTemplate;
+import org.springframework.core.io.ClassPathResource;
+
+import tools.jackson.databind.json.JsonMapper;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+
+
 import com.example.agent.trigger.tool.ActivityInfoTools;
 import com.example.agent.trigger.tool.ActivityTools;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
-import org.springframework.ai.chat.messages.SystemMessage;
+//import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.ToolResponseMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatResponse;
@@ -31,6 +40,7 @@ public class ManualAgentLoopDemo implements CommandLineRunner {
 
     private final OpenAiChatModel chatModel;
     private final ToolCallback[] toolCallbacks;
+    private final JsonMapper jsonMapper = JsonMapper.builder().build();
 
 //    boolean simulateToolFailure = true;
     private boolean simulateToolFailure = false;
@@ -60,23 +70,85 @@ public class ManualAgentLoopDemo implements CommandLineRunner {
         // 这些消息只属于当前问题内部的执行过程
         List<Message> messages = new ArrayList<>();
 
-        messages.add(new SystemMessage("""
-                你是一名活动查询助手。
-                请使用中文回答。
-                具体活动数据必须通过提供的工具查询，不要编造。
-                信息足够后直接回答，不要重复查询。
-                """));
+        // 从应用的 classpath 中找到提示词文件
+        ClassPathResource promptResource =
+                new ClassPathResource("prompts/activity-agent-system.st");
 
-        String question = "查询 A001 的活动信息和销售数据。";
+        // 使用 Spring AI 创建系统提示词模板
+        SystemPromptTemplate systemTemplate =
+                new SystemPromptTemplate(promptResource);
+
+//        // 填充变量，生成一条系统消息，并加入当前任务的消息列表
+//        messages.add(systemTemplate.createMessage(Map.of(
+//                "assistantName", "活动运营查询助手",
+//                "language", "中文"
+//        )));
+
+        // 这段字符串作为变量值填入模板，不会被再次当成模板解析
+        String outputFormat = """
+        只返回一个 JSON 对象，不要输出 Markdown 代码块或额外解释。
+
+        对象包含三个字段：
+        - activityId：字符串；无法确定活动编号时为 null。
+        - status：只能使用下面规定的状态。
+        - message：非空字符串，向用户说明查询结果或需要补充的信息。
+
+        status 的含义：
+        SUCCESS：已经获得用户需要的数据。
+        NEED_INPUT：缺少必要信息，需要用户补充。
+        NOT_FOUND：工具明确返回未找到活动。
+        PARTIAL：只获得了用户需要的部分信息。
+        QUERY_FAILED：工具执行失败，未获得所需数据。
+
+        缺少活动编号时的格式示例：
+        {
+          "activityId": null,
+          "status": "NEED_INPUT",
+          "message": "请提供您要查询的活动编号。"
+        }
+        """;
+
+        messages.add(systemTemplate.createMessage(Map.of(
+                "assistantName", "活动运营查询助手",
+                "language", "中文",
+                "outputFormat", outputFormat
+        )));
+
+
+        String question = "查询 A001 的销售数据。";
         messages.add(new UserMessage(question));
 
         // 向模型提供可用工具，不在这里指定必须调用哪个
         // 从已配置的模型选项复制，只追加工具，保留千问模型名、地址和密钥。
         // 不直接 new 通用选项，也不创建带有其他默认模型名的空白选项。
+//        OpenAiChatOptions options = chatModel.getOptions().mutate()
+//                .toolCallbacks(toolCallbacks)
+//                .build();
+        // 读取最终回答的结构定义
+        String answerSchema;
+
+        try {
+            answerSchema = new ClassPathResource(
+                    "activity-agent-answer.schema.json"
+            ).getContentAsString(StandardCharsets.UTF_8);
+
+        } catch (IOException e) {
+            throw new IllegalStateException("读取回答 Schema 失败", e);
+        }
+
+        // 声明：最终回答采用 JSON Schema 模式，并启用严格约束
+        OpenAiChatModel.ResponseFormat responseFormat =
+                OpenAiChatModel.ResponseFormat.builder()
+                        .type(OpenAiChatModel.ResponseFormat.Type.JSON_SCHEMA)
+                        .jsonSchema(answerSchema)
+                        .strict(true)
+                        .build();
+
+        // 保留原来的模型配置和工具，同时增加最终回答格式约束
         OpenAiChatOptions options = chatModel.getOptions().mutate()
                 .toolCallbacks(toolCallbacks)
+                .responseFormat(responseFormat)
                 .build();
-
         System.out.println("用户问题：" + question);
 
         for (int step = 1; step <= MAX_MODEL_CALLS; step++) {
@@ -151,9 +223,36 @@ public class ManualAgentLoopDemo implements CommandLineRunner {
                     return;
                 }
 
-                // ANSWERED 表示获得了回答，不保证其中每个业务目标都已完成
+//                // ANSWERED 表示获得了回答，不保证其中每个业务目标都已完成
+//                System.out.println("[任务结束] ANSWERED");
+//                System.out.println("最终回答：" + answer);
+//                return;
+                System.out.println("模型原始回答：" + answer);
+
+                ActivityAgentAnswer parsedAnswer;
+
+                try {
+                    // 将模型返回的 JSON 字符串转换成 Java 对象
+                    parsedAnswer = jsonMapper.readValue(
+                            answer,
+                            ActivityAgentAnswer.class);
+
+                    if (parsedAnswer == null) {
+                        throw new IllegalArgumentException("最终回答不能为 null");
+                    }
+
+                } catch (RuntimeException e) {
+                    System.err.println(
+                            "[任务结束] INVALID_OUTPUT"
+                                    + "：回答无法解析或字段校验失败"
+                                    + "，异常类型：" + e.getClass().getSimpleName());
+                    return;
+                }
+
                 System.out.println("[任务结束] ANSWERED");
-                System.out.println("最终回答：" + answer);
+                System.out.println("活动编号：" + parsedAnswer.activityId());
+                System.out.println("业务状态：" + parsedAnswer.status());
+                System.out.println("最终回答：" + parsedAnswer.message());
                 return;
             }
 
